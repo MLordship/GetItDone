@@ -14,10 +14,12 @@ import {
   ClipboardCheck,
   GitBranch,
   LayoutDashboard,
+  Search,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import QuickCapture from '@/components/inbox/QuickCapture'
 import { ToastProvider } from '@/components/ui/Toast'
+import SearchModal from '@/components/search/SearchModal'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,6 +35,18 @@ const navItems = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [showCapture, setShowCapture] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearch((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
 
   return (
     <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--background)' }}>
@@ -40,6 +54,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-56 shrink-0 border-r" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="px-4 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
           <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--foreground)' }}>GetItDone</span>
+        </div>
+
+        {/* Search button */}
+        <div className="px-2 pt-2">
+          <button
+            onClick={() => setShowSearch(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors border"
+            style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--background)' }}
+          >
+            <Search size={14} />
+            <span className="flex-1 text-left">Cerca…</span>
+            <kbd className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--border)', color: 'var(--muted)' }}>⌘K</kbd>
+          </button>
         </div>
 
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -71,19 +98,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Plus size={16} />
             Cattura rapida
           </button>
-          <Link
-            href="/gtd-flow"
-            className="mt-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-            style={{ color: 'var(--muted)' }}
-          >
+          <Link href="/gtd-flow" className="mt-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
             <GitBranch size={16} />
             Flusso GTD
           </Link>
-          <Link
-            href="/settings"
-            className="mt-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-            style={{ color: 'var(--muted)' }}
-          >
+          <Link href="/settings" className="mt-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
             <Settings size={16} />
             Impostazioni
           </Link>
@@ -92,6 +111,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        {/* Mobile search bar */}
+        <div className="md:hidden px-4 pt-3 pb-1">
+          <button
+            onClick={() => setShowSearch(true)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm border"
+            style={{ color: 'var(--muted)', borderColor: 'var(--border)', background: 'var(--surface)' }}
+          >
+            <Search size={15} />
+            <span>Cerca…</span>
+          </button>
+        </div>
         {children}
       </main>
 
@@ -125,8 +155,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </button>
       </nav>
 
-      {/* Quick capture modal */}
       {showCapture && <QuickCapture onClose={() => setShowCapture(false)} />}
+      {showSearch && <SearchModal onClose={() => setShowSearch(false)} />}
       <ToastProvider />
     </div>
   )

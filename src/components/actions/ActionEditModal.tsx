@@ -2,24 +2,26 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { X } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import type { Action } from '@/types/database'
 import { toast } from '@/components/ui/Toast'
 
 interface Props {
   action: Action
   onSave: (updated: Partial<Action>) => void
+  onDelete: (id: string) => void
   onClose: () => void
 }
 
 const CONTEXTS = ['@casa', '@lavoro', '@telefono', '@computer', '@commissioni', '@lettura']
 
-export default function ActionEditModal({ action, onSave, onClose }: Props) {
+export default function ActionEditModal({ action, onSave, onDelete, onClose }: Props) {
   const [title, setTitle] = useState(action.title)
   const [notes, setNotes] = useState(action.notes ?? '')
   const [context, setContext] = useState(action.context ?? '')
   const [delegatedTo, setDelegatedTo] = useState(action.delegated_to ?? '')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function handleSave() {
     if (!title.trim()) return
@@ -34,6 +36,13 @@ export default function ActionEditModal({ action, onSave, onClose }: Props) {
     await createClient().from('actions').update(updates).eq('id', action.id)
     onSave(updates)
     toast('Modificato')
+    onClose()
+  }
+
+  async function handleDelete() {
+    await createClient().from('actions').delete().eq('id', action.id)
+    onDelete(action.id)
+    toast('Azione eliminata')
     onClose()
   }
 
@@ -118,21 +127,23 @@ export default function ActionEditModal({ action, onSave, onClose }: Props) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm border"
-            style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-          >
-            Annulla
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!title.trim() || saving}
-            className="flex-1 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-          >
-            Salva
-          </button>
+          {confirmDelete ? (
+            <>
+              <span className="flex-1 text-xs self-center" style={{ color: 'var(--muted)' }}>Eliminare definitivamente?</span>
+              <button onClick={() => setConfirmDelete(false)} className="px-3 py-2 rounded-xl text-sm border" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No</button>
+              <button onClick={handleDelete} className="px-3 py-2 rounded-xl text-sm font-medium" style={{ background: 'var(--danger)', color: '#fff' }}>Elimina</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-xl border" style={{ borderColor: 'var(--border)', color: 'var(--danger)' }} title="Elimina">
+                <Trash2 size={15} />
+              </button>
+              <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm border" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>Annulla</button>
+              <button onClick={handleSave} disabled={!title.trim() || saving} className="flex-1 py-2 rounded-xl text-sm font-medium disabled:opacity-50" style={{ background: 'var(--accent)', color: '#fff' }}>
+                Salva
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

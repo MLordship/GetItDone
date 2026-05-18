@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Circle, CheckCircle2, Pencil, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react'
+import { Circle, CheckCircle2, Pencil, ChevronDown, ChevronRight, RotateCcw, Plus } from 'lucide-react'
 import type { Action, Area } from '@/types/database'
 import { SkeletonList } from '@/components/ui/Skeleton'
 import { toast } from '@/components/ui/Toast'
@@ -13,6 +13,45 @@ const CONTEXTS = ['tutti', '@casa', '@lavoro', '@telefono', '@computer', '@commi
 interface ActionWithRelations extends Action {
   areas?: { name: string; color: string } | null
   projects?: { title: string } | null
+}
+
+function QuickAdd({ onAdded }: { onAdded: (action: ActionWithRelations) => void }) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleOpen() { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    const { data } = await createClient().from('actions').insert({ title: title.trim(), type: 'next_action', completed: false }).select('*, areas(name, color), projects(title)').single()
+    if (data) { onAdded(data); setTitle(''); setOpen(false); toast('Azione aggiunta') }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={handleOpen} className="flex items-center gap-2 px-4 py-3 w-full text-sm border-b" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
+        <Plus size={15} /> Aggiungi azione
+      </button>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2 px-4 py-2.5 border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <input
+        ref={inputRef}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+        placeholder="Nuova azione…"
+        className="flex-1 rounded-xl px-3 py-2 text-sm border outline-none"
+        style={{ background: 'var(--background)', borderColor: 'var(--accent)', color: 'var(--foreground)' }}
+      />
+      <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-xl text-sm border" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>Annulla</button>
+      <button type="submit" disabled={!title.trim()} className="px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-50" style={{ background: 'var(--accent)', color: '#fff' }}>Aggiungi</button>
+    </form>
+  )
 }
 
 export default function NextActionsList() {
@@ -43,10 +82,7 @@ export default function NextActionsList() {
     await createClient().from('actions').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', action.id)
     setActions((prev) => prev.filter((a) => a.id !== action.id))
     setCompleted((prev) => [{ ...action, completed: true }, ...prev])
-    toast(`✓ "${action.title}" completata`, {
-      label: 'Annulla',
-      onClick: () => undoComplete(action),
-    })
+    toast(`✓ "${action.title}" completata`, { label: 'Annulla', onClick: () => undoComplete(action) })
   }
 
   async function undoComplete(action: ActionWithRelations) {
@@ -64,6 +100,11 @@ export default function NextActionsList() {
 
   function handleSaved(id: string, updates: Partial<Action>) {
     setActions((prev) => prev.map((a) => a.id === id ? { ...a, ...updates } : a))
+  }
+
+  function handleDeleted(id: string) {
+    setActions((prev) => prev.filter((a) => a.id !== id))
+    setCompleted((prev) => prev.filter((a) => a.id !== id))
   }
 
   const filtered = actions.filter((a) => {
@@ -114,6 +155,8 @@ export default function NextActionsList() {
         )}
       </div>
 
+      <QuickAdd onAdded={(a) => setActions((prev) => [...prev, a])} />
+
       {filtered.length === 0 && completed.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="text-4xl mb-3">🎯</div>
@@ -135,13 +178,14 @@ export default function NextActionsList() {
                     </button>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{action.title}</p>
+                      {action.notes && <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--muted)' }}>{action.notes}</p>}
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {action.context && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>{action.context}</span>}
                         {action.areas && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: action.areas.color + '20', color: action.areas.color }}>{action.areas.name}</span>}
                         {action.projects && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-hover)', color: 'var(--muted)' }}>{action.projects.title}</span>}
                       </div>
                     </div>
-                    <button onClick={() => setEditing(action)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: 'var(--muted)' }} title="Modifica">
+                    <button onClick={() => setEditing(action)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: 'var(--muted)' }}>
                       <Pencil size={14} />
                     </button>
                   </li>
@@ -150,14 +194,9 @@ export default function NextActionsList() {
             </>
           )}
 
-          {/* Completate */}
           {completed.length > 0 && (
             <div className="border-t mt-2" style={{ borderColor: 'var(--border)' }}>
-              <button
-                onClick={() => setShowCompleted((v) => !v)}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm"
-                style={{ color: 'var(--muted)' }}
-              >
+              <button onClick={() => setShowCompleted((v) => !v)} className="w-full flex items-center gap-2 px-4 py-3 text-sm" style={{ color: 'var(--muted)' }}>
                 {showCompleted ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                 {completed.length} completate
               </button>
@@ -165,14 +204,12 @@ export default function NextActionsList() {
                 <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {completed.map((action) => (
                     <li key={action.id} className="flex items-start gap-3 px-4 py-3 group" style={{ background: 'var(--surface)' }}>
-                      <div className="mt-0.5 shrink-0" style={{ color: 'var(--success)' }}>
-                        <CheckCircle2 size={20} />
-                      </div>
+                      <div className="mt-0.5 shrink-0" style={{ color: 'var(--success)' }}><CheckCircle2 size={20} /></div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm line-through" style={{ color: 'var(--muted)' }}>{action.title}</p>
                         {action.projects && <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{action.projects.title}</p>}
                       </div>
-                      <button onClick={() => restore(action)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: 'var(--muted)' }} title="Ripristina">
+                      <button onClick={() => restore(action)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: 'var(--muted)' }}>
                         <RotateCcw size={14} />
                       </button>
                     </li>
@@ -185,7 +222,12 @@ export default function NextActionsList() {
       )}
 
       {editing && (
-        <ActionEditModal action={editing} onSave={(updates) => handleSaved(editing.id, updates)} onClose={() => setEditing(null)} />
+        <ActionEditModal
+          action={editing}
+          onSave={(updates) => handleSaved(editing.id, updates)}
+          onDelete={handleDeleted}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   )

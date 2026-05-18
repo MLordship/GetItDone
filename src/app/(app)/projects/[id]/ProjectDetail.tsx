@@ -86,7 +86,10 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
       completed_at: done ? new Date().toISOString() : null,
     }).eq('id', action.id)
     setActions((prev) => prev.map((a) => a.id === action.id ? { ...a, completed: done, completed_at: done ? new Date().toISOString() : null } : a))
-    if (done) toast(`✓ "${action.title}" completata`)
+    if (done) toast(`✓ "${action.title}" completata`, {
+      label: 'Annulla',
+      onClick: () => toggleComplete({ ...action, completed: true }),
+    })
   }
 
   async function markProjectDone() {

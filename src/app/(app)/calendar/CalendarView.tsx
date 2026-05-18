@@ -71,10 +71,17 @@ export default function CalendarView() {
     setSelected(null)
   }
 
-  async function markDone(id: string, title: string) {
-    await createClient().from('actions').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', id)
-    setActions((prev) => prev.filter((a) => a.id !== id))
-    toast(`✓ "${title}" completata`)
+  async function markDone(action: ActionWithRelations) {
+    await createClient().from('actions').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', action.id)
+    setActions((prev) => prev.filter((a) => a.id !== action.id))
+    toast(`✓ "${action.title}" completata`, {
+      label: 'Annulla',
+      onClick: async () => {
+        await createClient().from('actions').update({ completed: false, completed_at: null }).eq('id', action.id)
+        setActions((prev) => [...prev, action])
+        toast('Azione ripristinata')
+      },
+    })
   }
 
   const selectedActions = selected ? (actionsByDay[selected] ?? []) : []
@@ -155,7 +162,7 @@ export default function CalendarView() {
             <ul className="space-y-2">
               {selectedActions.map((action) => (
                 <li key={action.id} className="flex items-start gap-3 p-3 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                  <button onClick={() => markDone(action.id, action.title)} style={{ color: 'var(--border)' }} className="mt-0.5 shrink-0">
+                  <button onClick={() => markDone(action)} style={{ color: 'var(--border)' }} className="mt-0.5 shrink-0">
                     <CheckCircle2 size={18} />
                   </button>
                   <div className="flex-1 min-w-0">

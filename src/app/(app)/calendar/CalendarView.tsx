@@ -86,7 +86,9 @@ export default function CalendarView() {
     })
   }
 
-  const selectedActions = selected ? (actionsByDay[selected] ?? []) : []
+  const selectedActions = (selected ? (actionsByDay[selected] ?? []) : [])
+    .slice()
+    .sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
 
   if (loading) {
     return (

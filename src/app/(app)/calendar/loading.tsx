@@ -12,7 +12,7 @@ export default function Loading() {
         </div>
         <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
           <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface-hover)' }}>
-            {['L','M','M','G','V','S','D'].map((d) => (
+            {['Lu','Ma','Me','Gi','Ve','Sa','Do'].map((d) => (
               <div key={d} className="py-2 text-center text-xs font-medium" style={{ color: 'var(--muted)' }}>{d}</div>
             ))}
           </div>

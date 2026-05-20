@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Action } from '@/types/database'
 import { formatTime } from '@/lib/dateIt'
 import { toast } from '@/components/ui/Toast'
+import ActionEditModal from '@/components/actions/ActionEditModal'
 
 interface ActionWithRelations extends Action {
   areas?: { name: string; color: string } | null
@@ -31,6 +32,7 @@ export default function CalendarView() {
   const [selected, setSelected] = useState<string | null>(null)
   const [actions, setActions] = useState<ActionWithRelations[]>([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<ActionWithRelations | null>(null)
 
   useEffect(() => {
     createClient()
@@ -168,16 +170,35 @@ export default function CalendarView() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{action.title}</p>
                     {action.scheduled_at && (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                        {formatTime(action.scheduled_at!)}
-                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatTime(action.scheduled_at!)}</p>
+                    )}
+                    {action.notes && (
+                      <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--muted)' }}>{action.notes}</p>
                     )}
                   </div>
+                  <button onClick={() => setEditing(action)} className="p-1.5 rounded-lg shrink-0" style={{ color: 'var(--muted)' }} title="Modifica">
+                    <Pencil size={14} />
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
+      )}
+
+      {editing && (
+        <ActionEditModal
+          action={editing}
+          onSave={(updates) => {
+            setActions((prev) => prev.map((a) => a.id === editing.id ? { ...a, ...updates } : a))
+            setEditing(null)
+          }}
+          onDelete={(id) => {
+            setActions((prev) => prev.filter((a) => a.id !== id))
+            setEditing(null)
+          }}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   )

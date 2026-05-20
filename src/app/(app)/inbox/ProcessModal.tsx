@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { InboxItem, ActionType, Area } from '@/types/database'
+import DateTimePicker from '@/components/ui/DateTimePicker'
 
 const ACTION_TYPES: { value: ActionType; label: string }[] = [
   { value: 'next_action', label: 'Azione prossima' },
@@ -139,13 +140,7 @@ export default function ProcessModal({ item, onDone, onClose }: ProcessModalProp
         {type === 'scheduled' && (
           <div className="space-y-1.5">
             <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Data e ora</label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
-              style={{ background: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-            />
+            <DateTimePicker value={scheduledAt} onChange={setScheduledAt} />
           </div>
         )}
 

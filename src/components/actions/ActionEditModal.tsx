@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { X, Trash2 } from 'lucide-react'
 import type { Action } from '@/types/database'
 import { toast } from '@/components/ui/Toast'
+import DateTimePicker from '@/components/ui/DateTimePicker'
 
 interface Props {
   action: Action
@@ -20,6 +21,12 @@ export default function ActionEditModal({ action, onSave, onDelete, onClose }: P
   const [notes, setNotes] = useState(action.notes ?? '')
   const [context, setContext] = useState(action.context ?? '')
   const [delegatedTo, setDelegatedTo] = useState(action.delegated_to ?? '')
+  const [scheduledAt, setScheduledAt] = useState(() => {
+    if (!action.scheduled_at) return ''
+    const d = new Date(action.scheduled_at)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -32,6 +39,7 @@ export default function ActionEditModal({ action, onSave, onDelete, onClose }: P
     }
     if (action.type === 'next_action') updates.context = context || null
     if (action.type === 'waiting_for') updates.delegated_to = delegatedTo.trim() || null
+    if (action.type === 'scheduled') updates.scheduled_at = scheduledAt ? new Date(scheduledAt).toISOString() : null
 
     await createClient().from('actions').update(updates).eq('id', action.id)
     onSave(updates)
@@ -123,6 +131,13 @@ export default function ActionEditModal({ action, onSave, onDelete, onClose }: P
               className="w-full rounded-xl px-3 py-2.5 text-sm border outline-none"
               style={{ background: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
             />
+          )}
+
+          {action.type === 'scheduled' && (
+            <div>
+              <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--muted)' }}>Data e ora</p>
+              <DateTimePicker value={scheduledAt} onChange={setScheduledAt} />
+            </div>
           )}
         </div>
 

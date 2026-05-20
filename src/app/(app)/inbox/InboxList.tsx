@@ -152,9 +152,9 @@ export default function InboxList() {
     return () => window.removeEventListener('inbox-updated', fetchItems)
   }, [])
 
-  function handleDelete(id: string) {
-    createClient().from('inbox').delete().eq('id', id)
+  async function handleDelete(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id))
+    await createClient().from('inbox').delete().eq('id', id)
     toast('Elemento eliminato')
   }
 

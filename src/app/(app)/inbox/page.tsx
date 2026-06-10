@@ -4,7 +4,7 @@ import PageHeader from '@/components/layout/PageHeader'
 export default function InboxPage() {
   return (
     <div>
-      <PageHeader title="Inbox" subtitle=" " />
+      <PageHeader title="Inbox" />
       <InboxList />
     </div>
   )

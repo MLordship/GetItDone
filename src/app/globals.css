@@ -14,6 +14,20 @@
   --success: #16a34a;
 }
 
+.dark {
+  --background: #111110;
+  --foreground: #e8e7e4;
+  --surface: #1c1c1a;
+  --surface-hover: #252522;
+  --border: #2e2e2b;
+  --muted: #8a8a87;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-soft: #1e1b4b;
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -36,7 +50,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Prevent layout shift from scrollbar */

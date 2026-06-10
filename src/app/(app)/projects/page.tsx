@@ -4,7 +4,7 @@ import ProjectsList from './ProjectsList'
 export default function ProjectsPage() {
   return (
     <div>
-      <PageHeader title="Progetti" subtitle=" " />
+      <PageHeader title="Progetti" />
       <ProjectsList />
     </div>
   )

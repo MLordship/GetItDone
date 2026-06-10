@@ -85,18 +85,30 @@ Consultabile da desktop e mobile. Accesso protetto tramite autenticazione.
 | `/auth/reset` | Pagina cambio password dopo reset |
 
 ## Principi UI/UX
-- **Mobile-first**: navigazione bottom bar su mobile (5 voci), sidebar su desktop
+- **Mobile-first**: navigazione bottom bar su mobile (5 voci), sidebar su desktop (`w-64`)
 - Design pulito e minimalista con CSS custom properties (`--background`, `--surface`, `--accent`, ecc.)
+- **Dark mode**: classe `.dark` sull'`<html>`, 3 opzioni (Chiaro/Auto/Scuro) persistite in `localStorage`; script inline nel `<head>` previene il flash al caricamento
 - Cattura rapida inbox accessibile ovunque (FAB su mobile, pulsante sidebar su desktop)
 - Navigazione istantanea: `loading.tsx` + client-side fetching con `useEffect`
 - Toast feedback (`src/components/ui/Toast.tsx`) — singleton, chiamabile con `toast('messaggio')`
 - Aggiornamenti cross-componente via `CustomEvent` (es. `inbox-updated` dopo quick capture)
+- Top bar desktop con titolo pagina corrente + ricerca ⌘K
+- Contenuto centrato `max-w-3xl` su schermi larghi (gestito da `AppLayout`, non dai singoli componenti)
+- Badge inbox count in tempo reale nella sidebar e nel bottom nav mobile
+
+## Layout desktop
+- Sidebar: `w-64`, sezione principale (Dashboard→Calendario) + sezione "Raccolta" (In attesa, Prima o poi, Review)
+- Top bar: titolo pagina + pulsante ricerca ⌘K
+- Contenuto: `max-w-3xl mx-auto` — **non aggiungere ulteriori max-width nei componenti figli**
+- Dashboard: griglia `3×2` di stat card a sinistra + pannello 300px con alert e link rapidi a destra
 
 ## Convenzioni codice
 - Componenti UI in `src/components/`
 - Client Supabase in `src/lib/supabase/` — **senza generic `<Database>`** (causa `never` con `moduleResolution: "bundler"`)
 - Tipi in `src/types/database.ts` — interfacce flat (Area, Project, Action, InboxItem)
 - Formattazione date in italiano: usare `src/lib/dateIt.ts` — **mai** `toLocaleDateString`/`toLocaleTimeString` (dipende dalla lingua del browser)
+- Theme hook: `src/lib/useTheme.ts` — esporta `useTheme()` con `{ theme, setTheme }`
+- `PageHeader`: non passare `subtitle=" "` come spacer — viene ignorato se vuoto; su desktop titolo `text-2xl`
 - Nessun commento salvo per logica non ovvia
 
 ## Aggiornamento CLAUDE.md

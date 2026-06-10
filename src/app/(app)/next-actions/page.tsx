@@ -4,7 +4,7 @@ import NextActionsList from './NextActionsList'
 export default function NextActionsPage() {
   return (
     <div>
-      <PageHeader title="Prossime azioni" subtitle=" " />
+      <PageHeader title="Prossime azioni" />
       <NextActionsList />
     </div>
   )

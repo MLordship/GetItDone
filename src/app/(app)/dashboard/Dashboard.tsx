@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Inbox, Zap, Clock, FolderKanban, Sparkles, ChevronRight, ClipboardCheck } from 'lucide-react'
+import { Inbox, Zap, Clock, FolderKanban, Sparkles, ChevronRight, ClipboardCheck, Calendar, AlertTriangle, GitBranch } from 'lucide-react'
+import { formatDateShort } from '@/lib/dateIt'
 
 interface Stats {
   inbox: number
@@ -12,10 +13,10 @@ interface Stats {
   activeProjects: number
   someday: number
   projectsWithoutAction: number
-  overdueActions: Action[]
+  overdueActions: OverdueAction[]
 }
 
-interface Action {
+interface OverdueAction {
   id: string
   title: string
   scheduled_at: string | null
@@ -37,7 +38,7 @@ function StatCard({ href, icon, label, count, accent, warn }: {
   return (
     <Link
       href={href}
-      className="flex flex-col gap-3 p-4 rounded-2xl border"
+      className="flex flex-col gap-3 p-4 rounded-2xl border transition-opacity hover:opacity-90"
       style={{ background: bg, borderColor: border }}
     >
       <div className="flex items-center justify-between">
@@ -45,8 +46,8 @@ function StatCard({ href, icon, label, count, accent, warn }: {
         <ChevronRight size={14} style={{ color: muted }} />
       </div>
       <div>
-        <p className="text-3xl font-bold" style={{ color: fg }}>{count}</p>
-        <p className="text-xs mt-0.5" style={{ color: muted }}>{label}</p>
+        <p className="text-3xl font-bold leading-none" style={{ color: fg }}>{count}</p>
+        <p className="text-xs mt-1.5" style={{ color: muted }}>{label}</p>
       </div>
     </Link>
   )
@@ -58,7 +59,7 @@ function SkeletonCard() {
       <div className="h-4 w-4 rounded" style={{ background: 'var(--border)' }} />
       <div>
         <div className="h-8 w-12 rounded" style={{ background: 'var(--border)' }} />
-        <div className="h-3 w-20 rounded mt-1.5" style={{ background: 'var(--border)' }} />
+        <div className="h-3 w-20 rounded mt-2" style={{ background: 'var(--border)' }} />
       </div>
     </div>
   )
@@ -81,7 +82,6 @@ export default function Dashboard() {
         supabase.from('actions').select('id, title, scheduled_at').eq('type', 'scheduled').eq('completed', false).lt('scheduled_at', now).order('scheduled_at'),
       ])
 
-      // projects without a next action
       const { data: activeProjectIds } = await supabase.from('projects').select('id').eq('status', 'active')
       let projectsWithoutAction = 0
       if (activeProjectIds && activeProjectIds.length > 0) {
@@ -100,7 +100,7 @@ export default function Dashboard() {
         activeProjects: projects.count ?? 0,
         someday: someday.count ?? 0,
         projectsWithoutAction,
-        overdueActions: (overdue.data ?? []) as Action[],
+        overdueActions: (overdue.data ?? []) as OverdueAction[],
       })
     }
     load()
@@ -113,70 +113,128 @@ export default function Dashboard() {
     return 'Buonasera'
   })()
 
+  const hasAlerts = stats !== null && (stats.overdueActions.length > 0 || stats.projectsWithoutAction > 0)
+  const systemClean = stats !== null && stats.inbox === 0 && stats.overdueActions.length === 0 && stats.projectsWithoutAction === 0
+
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-      <div>
+    <div className="px-4 md:px-6 py-6">
+      {/* Greeting */}
+      <div className="mb-6">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>{greeting} 👋</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>Ecco lo stato del tuo sistema GTD</p>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {stats === null ? (
-          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-        ) : (
-          <>
-            <StatCard href="/inbox" icon={<Inbox size={18} />} label="Da processare" count={stats.inbox} accent={stats.inbox > 0} />
-            <StatCard href="/next-actions" icon={<Zap size={18} />} label="Prossime azioni" count={stats.nextActions} />
-            <StatCard href="/projects" icon={<FolderKanban size={18} />} label="Progetti attivi" count={stats.activeProjects} />
-            <StatCard href="/waiting" icon={<Clock size={18} />} label="In attesa" count={stats.waiting} />
-            <StatCard href="/someday" icon={<Sparkles size={18} />} label="Prima o poi" count={stats.someday} />
-            <StatCard href="/weekly-review" icon={<ClipboardCheck size={18} />} label="Weekly Review" count={0} />
-          </>
-        )}
-      </div>
+      {/* Desktop: two-column layout */}
+      <div className="md:grid md:grid-cols-[1fr_300px] md:gap-6">
 
-      {/* Alerts */}
-      {stats !== null && (
-        <div className="space-y-3">
-          {stats.overdueActions.length > 0 && (
-            <div className="rounded-2xl border p-4 space-y-2" style={{ background: 'var(--surface)', borderColor: 'var(--danger)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--danger)' }}>
-                ⚠️ {stats.overdueActions.length} {stats.overdueActions.length === 1 ? 'azione scaduta' : 'azioni scadute'}
-              </p>
-              <ul className="space-y-1">
-                {stats.overdueActions.slice(0, 3).map((a) => (
-                  <li key={a.id} className="text-sm" style={{ color: 'var(--foreground)' }}>{a.title}</li>
-                ))}
-                {stats.overdueActions.length > 3 && (
-                  <li className="text-xs" style={{ color: 'var(--muted)' }}>+{stats.overdueActions.length - 3} altri</li>
-                )}
-              </ul>
-              <Link href="/calendar" className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>Vai al calendario →</Link>
-            </div>
-          )}
+        {/* Left: stat cards */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {stats === null ? (
+              Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+            ) : (
+              <>
+                <StatCard href="/inbox" icon={<Inbox size={18} />} label="Da processare" count={stats.inbox} accent={stats.inbox > 0} />
+                <StatCard href="/next-actions" icon={<Zap size={18} />} label="Prossime azioni" count={stats.nextActions} />
+                <StatCard href="/projects" icon={<FolderKanban size={18} />} label="Progetti attivi" count={stats.activeProjects} />
+                <StatCard href="/waiting" icon={<Clock size={18} />} label="In attesa" count={stats.waiting} />
+                <StatCard href="/someday" icon={<Sparkles size={18} />} label="Prima o poi" count={stats.someday} />
+                <StatCard href="/calendar" icon={<Calendar size={18} />} label="Calendario" count={stats.overdueActions.length} warn={stats.overdueActions.length > 0} />
+              </>
+            )}
+          </div>
 
-          {stats.projectsWithoutAction > 0 && (
-            <div className="rounded-2xl border p-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--muted)' }}>
-                📁 {stats.projectsWithoutAction} {stats.projectsWithoutAction === 1 ? 'progetto senza prossima azione' : 'progetti senza prossima azione'}
-              </p>
-              <Link href="/projects" className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Rivedi i progetti →</Link>
+          {/* Alerts — shown below cards on mobile, hidden here on desktop */}
+          {stats !== null && (
+            <div className="md:hidden space-y-3">
+              <AlertsPanel stats={stats} systemClean={systemClean} />
             </div>
           )}
         </div>
+
+        {/* Right: sidebar panel — desktop only */}
+        <div className="hidden md:flex flex-col gap-4">
+          {stats === null ? (
+            <div className="rounded-2xl border p-5 space-y-3 animate-pulse" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="h-4 w-32 rounded" style={{ background: 'var(--border)' }} />
+              <div className="h-3 w-full rounded" style={{ background: 'var(--border)' }} />
+              <div className="h-3 w-4/5 rounded" style={{ background: 'var(--border)' }} />
+            </div>
+          ) : (
+            <>
+              <AlertsPanel stats={stats} systemClean={systemClean} />
+
+              {/* Quick links */}
+              <div className="rounded-2xl border p-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>Accesso rapido</p>
+                <div className="space-y-1">
+                  {[
+                    { href: '/weekly-review', icon: <ClipboardCheck size={15} />, label: 'Weekly Review' },
+                    { href: '/gtd-flow', icon: <GitBranch size={15} />, label: 'Flusso GTD' },
+                    { href: '/calendar', icon: <Calendar size={15} />, label: 'Calendario' },
+                  ].map(({ href, icon, label }) => (
+                    <Link key={href} href={href} className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--surface-hover)]" style={{ color: 'var(--foreground)' }}>
+                      <span style={{ color: 'var(--muted)' }}>{icon}</span>
+                      {label}
+                      <ChevronRight size={12} className="ml-auto" style={{ color: 'var(--muted)' }} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AlertsPanel({ stats, systemClean }: { stats: Stats; systemClean: boolean }) {
+  return (
+    <>
+      {stats.overdueActions.length > 0 && (
+        <div className="rounded-2xl border p-4 space-y-3" style={{ background: 'var(--surface)', borderColor: 'var(--danger)' }}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--danger)' }}>
+              {stats.overdueActions.length} {stats.overdueActions.length === 1 ? 'azione scaduta' : 'azioni scadute'}
+            </p>
+          </div>
+          <ul className="space-y-1.5">
+            {stats.overdueActions.slice(0, 4).map((a) => (
+              <li key={a.id} className="flex items-start gap-2">
+                <span className="text-xs mt-0.5 shrink-0" style={{ color: 'var(--muted)' }}>
+                  {a.scheduled_at ? formatDateShort(a.scheduled_at) : ''}
+                </span>
+                <span className="text-sm leading-snug" style={{ color: 'var(--foreground)' }}>{a.title}</span>
+              </li>
+            ))}
+            {stats.overdueActions.length > 4 && (
+              <li className="text-xs" style={{ color: 'var(--muted)' }}>+{stats.overdueActions.length - 4} altri</li>
+            )}
+          </ul>
+          <Link href="/calendar" className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>Vai al calendario →</Link>
+        </div>
       )}
 
-      {/* Weekly review nudge */}
-      {stats !== null && stats.inbox === 0 && stats.overdueActions.length === 0 && stats.projectsWithoutAction === 0 && (
+      {stats.projectsWithoutAction > 0 && (
+        <div className="rounded-2xl border p-4 space-y-1" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+            {stats.projectsWithoutAction} {stats.projectsWithoutAction === 1 ? 'progetto senza prossima azione' : 'progetti senza prossima azione'}
+          </p>
+          <Link href="/projects" className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Rivedi i progetti →</Link>
+        </div>
+      )}
+
+      {systemClean && (
         <div className="rounded-2xl p-4 text-center" style={{ background: 'var(--accent-soft)' }}>
-          <p className="text-sm font-medium" style={{ color: 'var(--accent)' }}>✨ Sistema in ordine!</p>
-          <p className="text-xs mt-1" style={{ color: 'var(--accent)' }}>Hai fatto la Weekly Review questa settimana?</p>
-          <Link href="/weekly-review" className="inline-block mt-2 text-xs font-semibold px-4 py-1.5 rounded-full" style={{ background: 'var(--accent)', color: '#fff' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>✨ Sistema in ordine!</p>
+          <p className="text-xs mt-1 mb-3" style={{ color: 'var(--accent)' }}>Hai fatto la Weekly Review questa settimana?</p>
+          <Link href="/weekly-review" className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full" style={{ background: 'var(--accent)', color: '#fff' }}>
             Inizia la review
           </Link>
         </div>
       )}
-    </div>
+    </>
   )
 }

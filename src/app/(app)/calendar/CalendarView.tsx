@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, Pencil, Inbox, CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Action } from '@/types/database'
 import { formatTime } from '@/lib/dateIt'
 import { toast } from '@/components/ui/Toast'
 import ActionEditModal from '@/components/actions/ActionEditModal'
+import DateTimePicker from '@/components/ui/DateTimePicker'
 
 interface ActionWithRelations extends Action {
   areas?: { name: string; color: string } | null
@@ -33,6 +34,8 @@ export default function CalendarView() {
   const [actions, setActions] = useState<ActionWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<ActionWithRelations | null>(null)
+  const [rescheduling, setRescheduling] = useState<ActionWithRelations | null>(null)
+  const [newDate, setNewDate] = useState('')
 
   useEffect(() => {
     createClient()
@@ -71,6 +74,33 @@ export default function CalendarView() {
     if (month === 11) { setMonth(0); setYear(y => y + 1) }
     else setMonth(m => m + 1)
     setSelected(null)
+  }
+
+  async function sendToInbox(action: ActionWithRelations) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('inbox').insert({ user_id: user.id, title: action.title, notes: action.notes })
+    await supabase.from('actions').delete().eq('id', action.id)
+    setActions((prev) => prev.filter((a) => a.id !== action.id))
+    toast(`"${action.title}" spostata nell'inbox`)
+  }
+
+  function openReschedule(action: ActionWithRelations) {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const d = action.scheduled_at ? new Date(action.scheduled_at) : new Date()
+    setNewDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`)
+    setRescheduling(action)
+  }
+
+  async function confirmReschedule() {
+    if (!rescheduling || !newDate) return
+    const iso = new Date(newDate).toISOString()
+    await createClient().from('actions').update({ scheduled_at: iso }).eq('id', rescheduling.id)
+    setActions((prev) => prev.map((a) => a.id === rescheduling.id ? { ...a, scheduled_at: iso } : a))
+    toast('Data aggiornata')
+    setRescheduling(null)
+    setNewDate('')
   }
 
   async function markDone(action: ActionWithRelations) {
@@ -165,22 +195,48 @@ export default function CalendarView() {
           ) : (
             <ul className="space-y-2">
               {selectedActions.map((action) => (
-                <li key={action.id} className="flex items-start gap-3 p-3 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                  <button onClick={() => markDone(action)} style={{ color: 'var(--border)' }} className="mt-0.5 shrink-0">
-                    <CheckCircle2 size={18} />
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{action.title}</p>
-                    {action.scheduled_at && (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatTime(action.scheduled_at!)}</p>
-                    )}
-                    {action.notes && (
-                      <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--muted)' }}>{action.notes}</p>
-                    )}
+                <li key={action.id} className="rounded-xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-start gap-3 p-3">
+                    <button onClick={() => markDone(action)} style={{ color: 'var(--border)' }} className="mt-0.5 shrink-0">
+                      <CheckCircle2 size={18} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{action.title}</p>
+                      {action.scheduled_at && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatTime(action.scheduled_at!)}</p>
+                      )}
+                      {action.notes && (
+                        <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--muted)' }}>{action.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openReschedule(action)} className="p-1.5 rounded-lg" style={{ color: 'var(--muted)' }} title="Sposta data">
+                        <CalendarClock size={14} />
+                      </button>
+                      <button onClick={() => sendToInbox(action)} className="p-1.5 rounded-lg" style={{ color: 'var(--muted)' }} title="Manda all'inbox">
+                        <Inbox size={14} />
+                      </button>
+                      <button onClick={() => setEditing(action)} className="p-1.5 rounded-lg" style={{ color: 'var(--muted)' }} title="Modifica">
+                        <Pencil size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => setEditing(action)} className="p-1.5 rounded-lg shrink-0" style={{ color: 'var(--muted)' }} title="Modifica">
-                    <Pencil size={14} />
-                  </button>
+
+                  {/* Reschedule inline */}
+                  {rescheduling?.id === action.id && (
+                    <div className="border-t px-3 pb-3 pt-2 space-y-3" style={{ borderColor: 'var(--border)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Nuova data e ora</p>
+                      <DateTimePicker value={newDate} onChange={setNewDate} />
+                      <div className="flex gap-2">
+                        <button onClick={() => setRescheduling(null)} className="px-3 py-2 rounded-xl text-sm border" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
+                          Annulla
+                        </button>
+                        <button onClick={confirmReschedule} disabled={!newDate} className="flex-1 py-2 rounded-xl text-sm font-medium disabled:opacity-50" style={{ background: 'var(--accent)', color: '#fff' }}>
+                          Conferma
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

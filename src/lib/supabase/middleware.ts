@@ -23,7 +23,14 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // fetch verso Supabase fallita (offline / DNS) — lascia passare la richiesta
+    return supabaseResponse
+  }
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/auth') ||
@@ -37,7 +44,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone()
-    url.pathname = '/inbox'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

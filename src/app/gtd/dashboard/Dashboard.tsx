@@ -134,12 +134,12 @@ export default function Dashboard() {
               Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
             ) : (
               <>
-                <StatCard href="/inbox" icon={<Inbox size={18} />} label="Da processare" count={stats.inbox} accent={stats.inbox > 0} />
-                <StatCard href="/next-actions" icon={<Zap size={18} />} label="Prossime azioni" count={stats.nextActions} />
-                <StatCard href="/projects" icon={<FolderKanban size={18} />} label="Progetti attivi" count={stats.activeProjects} />
-                <StatCard href="/waiting" icon={<Clock size={18} />} label="In attesa" count={stats.waiting} />
-                <StatCard href="/someday" icon={<Sparkles size={18} />} label="Prima o poi" count={stats.someday} />
-                <StatCard href="/calendar" icon={<Calendar size={18} />} label="Calendario" count={stats.overdueActions.length} warn={stats.overdueActions.length > 0} />
+                <StatCard href="/gtd/inbox" icon={<Inbox size={18} />} label="Da processare" count={stats.inbox} accent={stats.inbox > 0} />
+                <StatCard href="/gtd/next-actions" icon={<Zap size={18} />} label="Prossime azioni" count={stats.nextActions} />
+                <StatCard href="/gtd/projects" icon={<FolderKanban size={18} />} label="Progetti attivi" count={stats.activeProjects} />
+                <StatCard href="/gtd/waiting" icon={<Clock size={18} />} label="In attesa" count={stats.waiting} />
+                <StatCard href="/gtd/someday" icon={<Sparkles size={18} />} label="Prima o poi" count={stats.someday} />
+                <StatCard href="/gtd/calendar" icon={<Calendar size={18} />} label="Calendario" count={stats.overdueActions.length} warn={stats.overdueActions.length > 0} />
               </>
             )}
           </div>
@@ -213,7 +213,7 @@ function AlertsPanel({ stats, systemClean }: { stats: Stats; systemClean: boolea
               <li className="text-xs" style={{ color: 'var(--muted)' }}>+{stats.overdueActions.length - 4} altri</li>
             )}
           </ul>
-          <Link href="/calendar" className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>Vai al calendario →</Link>
+          <Link href="/gtd/calendar" className="text-xs font-semibold" style={{ color: 'var(--danger)' }}>Vai al calendario →</Link>
         </div>
       )}
 
@@ -222,7 +222,7 @@ function AlertsPanel({ stats, systemClean }: { stats: Stats; systemClean: boolea
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
             {stats.projectsWithoutAction} {stats.projectsWithoutAction === 1 ? 'progetto senza prossima azione' : 'progetti senza prossima azione'}
           </p>
-          <Link href="/projects" className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Rivedi i progetti →</Link>
+          <Link href="/gtd/projects" className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Rivedi i progetti →</Link>
         </div>
       )}
 
@@ -230,7 +230,7 @@ function AlertsPanel({ stats, systemClean }: { stats: Stats; systemClean: boolea
         <div className="rounded-2xl p-4 text-center" style={{ background: 'var(--accent-soft)' }}>
           <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>✨ Sistema in ordine!</p>
           <p className="text-xs mt-1 mb-3" style={{ color: 'var(--accent)' }}>Hai fatto la Weekly Review questa settimana?</p>
-          <Link href="/weekly-review" className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full" style={{ background: 'var(--accent)', color: '#fff' }}>
+          <Link href="/gtd/weekly-review" className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full" style={{ background: 'var(--accent)', color: '#fff' }}>
             Inizia la review
           </Link>
         </div>

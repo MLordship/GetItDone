@@ -72,7 +72,7 @@ const STEPS: Step[] = [
           <CheckItem id="mind" label="Fatto un mind sweep — cosa mi gira in testa?" checked={checked.has('mind')} toggle={toggle} sublabel="Cattura tutto nell'inbox prima di continuare" />
         </SectionCard>
         {data.inboxCount > 0 && (
-          <Link href="/inbox" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}>
+          <Link href="/gtd/inbox" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}>
             <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
               {data.inboxCount} elementi nell&apos;inbox da processare
             </span>
@@ -100,7 +100,7 @@ const STEPS: Step[] = [
             </div>
           </SectionCard>
         ) : (
-          <Link href="/inbox" className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}>
+          <Link href="/gtd/inbox" className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: 'var(--accent)', background: 'var(--accent-soft)' }}>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>Vai all&apos;inbox</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{data.inboxCount} elementi da processare</p>
@@ -137,7 +137,7 @@ const STEPS: Step[] = [
         {data.activeProjects.length > 0 && (
           <SectionCard title="Progetti attivi">
             {data.activeProjects.map((p) => (
-              <Link key={p.id} href={`/projects/${p.id}`} className="flex items-center justify-between py-2 group">
+              <Link key={p.id} href={`/gtd/projects/${p.id}`} className="flex items-center justify-between py-2 group">
                 <div className="flex items-center gap-2">
                   {p.areas && <div className="w-2 h-2 rounded-full" style={{ background: p.areas.color }} />}
                   <span className="text-sm" style={{ color: 'var(--foreground)' }}>{p.title}</span>
@@ -166,7 +166,7 @@ const STEPS: Step[] = [
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           Scorri la lista delle prossime azioni. Elimina quelle non più rilevanti, aggiungi contesti mancanti.
         </p>
-        <Link href="/next-actions" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <Link href="/gtd/next-actions" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <span className="text-sm" style={{ color: 'var(--foreground)' }}>{data.nextActionsCount} prossime azioni attive</span>
           <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
         </Link>
@@ -217,7 +217,7 @@ const STEPS: Step[] = [
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           Per ogni elemento in attesa: è ancora rilevante? Devi fare un sollecito? Qualcosa si è sbloccato?
         </p>
-        <Link href="/waiting" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <Link href="/gtd/waiting" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <span className="text-sm" style={{ color: 'var(--foreground)' }}>{data.waitingCount} elementi in attesa</span>
           <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
         </Link>
@@ -238,7 +238,7 @@ const STEPS: Step[] = [
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           Qualcosa è diventato rilevante ora? Qualcosa è da eliminare perché non ti interessa più?
         </p>
-        <Link href="/someday" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <Link href="/gtd/someday" className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <span className="text-sm" style={{ color: 'var(--foreground)' }}>{data.somedayCount} idee in lista</span>
           <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
         </Link>
@@ -353,7 +353,7 @@ export default function WeeklyReview() {
             >
               Ricomincia
             </button>
-            <Link href="/inbox" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--accent)', color: '#fff' }}>
+            <Link href="/gtd/inbox" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--accent)', color: '#fff' }}>
               Vai all&apos;inbox
             </Link>
           </div>

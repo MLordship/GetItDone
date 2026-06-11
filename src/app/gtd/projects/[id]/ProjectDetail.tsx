@@ -95,7 +95,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
   async function markProjectDone() {
     await createClient().from('projects').update({ status: 'completed' }).eq('id', id)
     toast('Progetto completato!')
-    router.push('/projects')
+    router.push('/gtd/projects')
   }
 
   if (loading) return (

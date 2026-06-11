@@ -29,7 +29,7 @@ export default function LoginForm() {
     if (error) {
       setError('Email o password non corretti')
     } else {
-      router.push('/inbox')
+      router.push('/gtd/inbox')
       router.refresh()
     }
     setLoading(false)

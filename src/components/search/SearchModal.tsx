@@ -45,9 +45,9 @@ export default function SearchModal({ onClose }: { onClose: () => void }) {
     ])
 
     const res: Result[] = [
-      ...(inbox.data ?? []).map((i) => ({ id: i.id, title: i.title, subtitle: i.notes ?? undefined, type: 'inbox' as const, href: '/inbox' })),
+      ...(inbox.data ?? []).map((i) => ({ id: i.id, title: i.title, subtitle: i.notes ?? undefined, type: 'inbox' as const, href: '/gtd/inbox' })),
       ...(actions.data ?? []).map((a) => ({ id: a.id, title: a.title, subtitle: a.notes ?? undefined, type: a.type as Result['type'], href: typeToHref(a.type) })),
-      ...(projects.data ?? []).map((p) => ({ id: p.id, title: p.title, subtitle: p.status !== 'active' ? (p.status === 'completed' ? 'Completato' : 'Prima o poi') : undefined, type: 'project' as const, href: `/projects/${p.id}` })),
+      ...(projects.data ?? []).map((p) => ({ id: p.id, title: p.title, subtitle: p.status !== 'active' ? (p.status === 'completed' ? 'Completato' : 'Prima o poi') : undefined, type: 'project' as const, href: `/gtd/projects/${p.id}` })),
     ]
     setResults(res)
     setSelected(0)
@@ -60,11 +60,11 @@ export default function SearchModal({ onClose }: { onClose: () => void }) {
   }, [query, search])
 
   function typeToHref(type: string) {
-    if (type === 'next_action') return '/next-actions'
-    if (type === 'waiting_for') return '/waiting'
-    if (type === 'someday_maybe') return '/someday'
-    if (type === 'scheduled') return '/calendar'
-    return '/next-actions'
+    if (type === 'next_action') return '/gtd/next-actions'
+    if (type === 'waiting_for') return '/gtd/waiting'
+    if (type === 'someday_maybe') return '/gtd/someday'
+    if (type === 'scheduled') return '/gtd/calendar'
+    return '/gtd/next-actions'
   }
 
   function navigate(result: Result) {

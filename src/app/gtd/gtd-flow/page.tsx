@@ -142,7 +142,7 @@ export default function GtdFlowPage() {
           <p className="text-xs" style={{ color: 'var(--foreground)' }}>
             Inbox a zero · ogni progetto con almeno una prossima azione · prossime azioni aggiornate · in attesa verificata.
           </p>
-          <Link href="/weekly-review" className="inline-block mt-2 text-xs font-semibold" style={{ color: 'var(--accent)' }}>
+          <Link href="/gtd/weekly-review" className="inline-block mt-2 text-xs font-semibold" style={{ color: 'var(--accent)' }}>
             Vai alla Review →
           </Link>
         </div>

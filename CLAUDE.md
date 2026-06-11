@@ -67,20 +67,31 @@ Consultabile da desktop e mobile. Accesso protetto tramite autenticazione.
 | notes | text | |
 | created_at | timestamptz | |
 
-## Viste dell'app
+## Struttura multi-app
+L'app è organizzata come una suite di micro-app sotto-route. La root `/` è una landing page che mostra le app disponibili.
+
+| App | Prefisso | Route file |
+|-----|----------|------------|
+| GTD | `/gtd/` | `src/app/gtd/` |
+| Notes (futuro) | `/notes/` | `src/app/notes/` |
+
+Auth e layout globale restano condivisi (`/login`, `/auth/`, `src/app/layout.tsx`).
+
+## Viste dell'app GTD
 | Percorso | Descrizione |
 |----------|-------------|
-| `/` | Dashboard / redirect |
-| `/inbox` | Cattura rapida, svuota inbox — modifica inline titolo/note |
-| `/projects` | Lista progetti per area con filtro |
-| `/projects/[id]` | Dettaglio progetto: azioni, completamento, sezione completate collassabile |
-| `/next-actions` | Azioni prossime, filtro contesto/area |
-| `/calendar` | Vista mensile azioni schedulate, lunedì come primo giorno |
-| `/waiting` | In attesa / delegato |
-| `/someday` | Prima o poi |
-| `/weekly-review` | Checklist guidata GTD settimanale in 7 step con dati reali |
-| `/gtd-flow` | Diagramma di flusso GTD interattivo in italiano |
-| `/settings` | Aree, contesti, profilo |
+| `/` | Landing page — selezione app |
+| `/gtd` | Redirect a `/gtd/dashboard` |
+| `/gtd/inbox` | Cattura rapida, svuota inbox — modifica inline titolo/note |
+| `/gtd/projects` | Lista progetti per area con filtro |
+| `/gtd/projects/[id]` | Dettaglio progetto: azioni, completamento, sezione completate collassabile |
+| `/gtd/next-actions` | Azioni prossime, filtro contesto/area |
+| `/gtd/calendar` | Vista mensile azioni schedulate, lunedì come primo giorno |
+| `/gtd/waiting` | In attesa / delegato |
+| `/gtd/someday` | Prima o poi |
+| `/gtd/weekly-review` | Checklist guidata GTD settimanale in 7 step con dati reali |
+| `/gtd/gtd-flow` | Diagramma di flusso GTD interattivo in italiano |
+| `/gtd/settings` | Aree, contesti, profilo |
 | `/login` | Login email/password + reset password |
 | `/auth/reset` | Pagina cambio password dopo reset |
 
@@ -101,6 +112,23 @@ Consultabile da desktop e mobile. Accesso protetto tramite autenticazione.
 - Top bar: titolo pagina + pulsante ricerca ⌘K
 - Contenuto: `max-w-3xl mx-auto` — **non aggiungere ulteriori max-width nei componenti figli**
 - Dashboard: griglia `3×2` di stat card a sinistra + pannello 300px con alert e link rapidi a destra
+
+## App Notes
+Route: `src/app/notes/` — layout dedicato `NotesLayout`, senza AppLayout GTD.
+
+| Percorso | Descrizione |
+|----------|-------------|
+| `/notes` | Redirect a `/notes/new` |
+| `/notes/new` | Crea nota vuota e redirect all'id |
+| `/notes/[id]` | Editor nota (Tiptap WYSIWYG + MD) |
+
+**Dipendenze**: `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-markdown`, `@tiptap/extension-placeholder`, `@tiptap/extension-typography`
+
+**Schema**: tabelle `notes` e `folders` con RLS. Vedere `supabase/migrations/20260611_notes.sql`.
+
+**Salvataggio**: auto-save con debounce 1s dopo ogni modifica. Dispatch `notes-updated` per aggiornare la sidebar.
+
+**Export**: bottone toolbar esporta il contenuto come file `.md`.
 
 ## Convenzioni codice
 - Componenti UI in `src/components/`

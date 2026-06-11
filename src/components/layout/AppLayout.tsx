@@ -31,17 +31,17 @@ import SearchModal from '@/components/search/SearchModal'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const mainNav: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/inbox', label: 'Inbox', icon: Inbox, badge: true },
-  { href: '/next-actions', label: 'Prossime azioni', icon: Zap },
-  { href: '/projects', label: 'Progetti', icon: FolderKanban },
-  { href: '/calendar', label: 'Calendario', icon: Calendar },
+  { href: '/gtd/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/gtd/inbox', label: 'Inbox', icon: Inbox, badge: true },
+  { href: '/gtd/next-actions', label: 'Prossime azioni', icon: Zap },
+  { href: '/gtd/projects', label: 'Progetti', icon: FolderKanban },
+  { href: '/gtd/calendar', label: 'Calendario', icon: Calendar },
 ]
 
 const secondaryNav: NavItem[] = [
-  { href: '/waiting', label: 'In attesa', icon: Clock },
-  { href: '/someday', label: 'Prima o poi', icon: Sparkles },
-  { href: '/weekly-review', label: 'Weekly review', icon: ClipboardCheck },
+  { href: '/gtd/waiting', label: 'In attesa', icon: Clock },
+  { href: '/gtd/someday', label: 'Prima o poi', icon: Sparkles },
+  { href: '/gtd/weekly-review', label: 'Weekly review', icon: ClipboardCheck },
 ]
 
 const navItems = [...mainNav, ...secondaryNav]
@@ -135,11 +135,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Plus size={16} />
             Cattura rapida
           </button>
-          <Link href="/gtd-flow" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
+          <Link href="/gtd/gtd-flow" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
             <GitBranch size={16} strokeWidth={1.75} />
             Flusso GTD
           </Link>
-          <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
+          <Link href="/gtd/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" style={{ color: 'var(--muted)' }}>
             <Settings size={16} strokeWidth={1.75} />
             Impostazioni
           </Link>

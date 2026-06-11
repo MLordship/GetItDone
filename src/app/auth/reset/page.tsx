@@ -41,7 +41,7 @@ function ResetForm() {
       setError(error.message)
     } else {
       setDone(true)
-      setTimeout(() => router.push('/inbox'), 2000)
+      setTimeout(() => router.push('/gtd/inbox'), 2000)
     }
     setLoading(false)
   }

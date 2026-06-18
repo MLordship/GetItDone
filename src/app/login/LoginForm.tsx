@@ -45,7 +45,7 @@ export default function LoginForm() {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
     const supabase = createClient()
     await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${siteUrl}/auth/reset`,
+      redirectTo: `${siteUrl}/auth/callback?next=/auth/reset`,
     })
     setMode('reset-sent')
     setLoading(false)

@@ -37,7 +37,7 @@ export default function Home() {
             key={href}
             href={href}
             className="flex flex-col gap-4 p-6 rounded-2xl border transition-opacity hover:opacity-80"
-            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)', display: 'flex' }}
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"

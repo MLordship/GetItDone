@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -26,11 +26,89 @@ function buildTree(folders: Folder[], parentId: string | null = null): FolderNod
     .map((f) => ({ ...f, children: buildTree(folders, f.id) }))
 }
 
-// Collect all descendant IDs to prevent circular moves
 function descendantIds(folders: Folder[], id: string): string[] {
   const children = folders.filter((f) => f.parent_id === id)
   return [id, ...children.flatMap((c) => descendantIds(folders, c.id))]
 }
+
+// ── FolderTreeNode estratto fuori dal componente padre per evitare hydration mismatch ──
+
+interface FolderTreeNodeProps {
+  node: FolderNode
+  depth: number
+  notes: Note[]
+  selectedFolder: string | null
+  expandedFolders: Set<string>
+  onSelect: (id: string) => void
+  onToggle: (id: string) => void
+  onMenu: (e: React.MouseEvent, folder: Folder) => void
+}
+
+function FolderTreeNode({
+  node, depth, notes, selectedFolder, expandedFolders, onSelect, onToggle, onMenu,
+}: FolderTreeNodeProps) {
+  const isExpanded = expandedFolders.has(node.id)
+  const isSelected = selectedFolder === node.id
+  const hasChildren = node.children.length > 0
+  const noteCount = notes.filter((n) => n.folder_id === node.id).length
+
+  return (
+    <div>
+      <div
+        className="group flex items-center gap-1 py-1.5 rounded-lg cursor-pointer"
+        style={{
+          paddingLeft: `${8 + depth * 14}px`,
+          paddingRight: 8,
+          background: isSelected ? 'var(--accent-soft)' : 'transparent',
+        }}
+        onClick={() => {
+          onSelect(node.id)
+          if (hasChildren) onToggle(node.id)
+        }}
+      >
+        {hasChildren ? (
+          <span style={{ color: 'var(--muted)' }}>
+            <ChevronRight size={12} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+          </span>
+        ) : (
+          <span style={{ width: 12, display: 'inline-block', flexShrink: 0 }} />
+        )}
+        <FolderIcon size={13} style={{ color: isSelected ? 'var(--accent)' : 'var(--muted)', flexShrink: 0 }} />
+        <span
+          className="flex-1 text-xs font-medium truncate"
+          style={{ color: isSelected ? 'var(--accent)' : 'var(--foreground)' }}
+        >
+          {node.name}
+        </span>
+        {noteCount > 0 && (
+          <span className="text-[10px] shrink-0" style={{ color: 'var(--muted)' }}>{noteCount}</span>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onMenu(e, node) }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded shrink-0"
+          style={{ color: 'var(--muted)' }}
+        >
+          <MoreHorizontal size={13} />
+        </button>
+      </div>
+      {isExpanded && node.children.map((child) => (
+        <FolderTreeNode
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          notes={notes}
+          selectedFolder={selectedFolder}
+          expandedFolders={expandedFolders}
+          onSelect={onSelect}
+          onToggle={onToggle}
+          onMenu={onMenu}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── Layout principale ────────────────────────────────────────────────────────
 
 export default function NotesLayout({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([])
@@ -80,15 +158,20 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     loadBacklinks(activeNoteId)
-  }, [activeNoteId, loadBacklinks])
-
-  useEffect(() => {
     const handler = () => loadBacklinks(activeNoteId)
     window.addEventListener('notes-updated', handler)
     return () => window.removeEventListener('notes-updated', handler)
   }, [activeNoteId, loadBacklinks])
 
-  // ── Folder actions ─────────────────────────────────────────────────────────
+  function toggleExpanded(id: string) {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // ── Folder actions ──────────────────────────────────────────────────────────
 
   async function createFolder(parentId: string | null = null) {
     const name = prompt('Nome cartella:')
@@ -96,12 +179,8 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase
-      .from('folders')
-      .insert({ user_id: user.id, name: name.trim(), parent_id: parentId })
-      .select('id')
-      .single()
-    if (data && parentId) setExpandedFolders((prev) => new Set([...prev, parentId]))
+    await supabase.from('folders').insert({ user_id: user.id, name: name.trim(), parent_id: parentId })
+    if (parentId) setExpandedFolders((prev) => new Set([...prev, parentId]))
     load()
   }
 
@@ -115,11 +194,11 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
   async function moveFolder(id: string) {
     const invalid = new Set(descendantIds(folders, id))
-    const options = [{ id: '', name: '— Nessuna cartella (root)' }, ...folders.filter((f) => !invalid.has(f.id))]
+    const options = [{ id: '', name: '— Root (nessuna cartella)' }, ...folders.filter((f) => !invalid.has(f.id))]
     const choice = prompt(
       `Sposta "${folders.find((f) => f.id === id)?.name}" in:\n` +
       options.map((o, i) => `${i}: ${o.name}`).join('\n') +
-      '\n\nInserisci il numero:'
+      '\n\nNumero:'
     )
     if (choice === null) return
     const idx = parseInt(choice)
@@ -132,11 +211,9 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
   }
 
   async function deleteFolder(id: string, name: string) {
-    if (!confirm(`Eliminare la cartella "${name}"?\nLe note al suo interno verranno spostate nella root.`)) return
+    if (!confirm(`Eliminare la cartella "${name}"?\nLe note verranno spostate in root.`)) return
     const supabase = createClient()
-    // Move child folders to root
     await supabase.from('folders').update({ parent_id: null }).eq('parent_id', id)
-    // Unassign notes
     await supabase.from('notes').update({ folder_id: null }).eq('folder_id', id)
     await supabase.from('folders').delete().eq('id', id)
     if (selectedFolder === id) setSelectedFolder(null)
@@ -146,22 +223,12 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
   // ── Note actions ────────────────────────────────────────────────────────────
 
-  async function deleteNote(id: string, e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!confirm('Eliminare questa nota?')) return
-    const supabase = createClient()
-    await supabase.from('notes').delete().eq('id', id)
-    if (activeNoteId === id) router.push('/notes/new')
-    load()
-  }
-
   async function moveNote(noteId: string) {
-    const options = [{ id: '', name: '— Nessuna cartella (root)' }, ...folders]
+    const options = [{ id: '', name: '— Root (nessuna cartella)' }, ...folders]
     const choice = prompt(
       'Sposta nota in:\n' +
       options.map((o, i) => `${i}: ${o.name}`).join('\n') +
-      '\n\nInserisci il numero:'
+      '\n\nNumero:'
     )
     if (choice === null) return
     const idx = parseInt(choice)
@@ -177,53 +244,27 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
   // ── Context menus ───────────────────────────────────────────────────────────
 
   function openFolderMenu(e: React.MouseEvent, folder: Folder) {
-    e.stopPropagation()
-    e.preventDefault()
     setMenu({
       position: { x: e.clientX, y: e.clientY },
       items: [
-        {
-          label: 'Nuova sottocartella',
-          icon: <FolderPlus size={14} />,
-          onClick: () => createFolder(folder.id),
-        },
-        {
-          label: 'Rinomina',
-          icon: <FolderIcon size={14} />,
-          onClick: () => renameFolder(folder.id, folder.name),
-        },
-        {
-          label: 'Sposta in…',
-          icon: <FolderOpen size={14} />,
-          onClick: () => moveFolder(folder.id),
-        },
+        { label: 'Nuova sottocartella', icon: <FolderPlus size={14} />, onClick: () => createFolder(folder.id) },
+        { label: 'Rinomina', icon: <FolderIcon size={14} />, onClick: () => renameFolder(folder.id, folder.name) },
+        { label: 'Sposta in…', icon: <FolderOpen size={14} />, onClick: () => moveFolder(folder.id) },
         { label: '', separator: true, onClick: () => {} },
-        {
-          label: 'Elimina cartella',
-          icon: <Trash2 size={14} />,
-          danger: true,
-          onClick: () => deleteFolder(folder.id, folder.name),
-        },
+        { label: 'Elimina cartella', icon: <Trash2 size={14} />, danger: true, onClick: () => deleteFolder(folder.id, folder.name) },
       ],
     })
   }
 
   function openNoteMenu(e: React.MouseEvent, note: Note) {
     e.stopPropagation()
-    e.preventDefault()
     setMenu({
       position: { x: e.clientX, y: e.clientY },
       items: [
-        {
-          label: 'Sposta in cartella…',
-          icon: <FolderOpen size={14} />,
-          onClick: () => moveNote(note.id),
-        },
+        { label: 'Sposta in cartella…', icon: <FolderOpen size={14} />, onClick: () => moveNote(note.id) },
         { label: '', separator: true, onClick: () => {} },
         {
-          label: 'Elimina nota',
-          icon: <Trash2 size={14} />,
-          danger: true,
+          label: 'Elimina nota', icon: <Trash2 size={14} />, danger: true,
           onClick: async () => {
             if (!confirm('Eliminare questa nota?')) return
             const supabase = createClient()
@@ -236,71 +277,11 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
     })
   }
 
-  // ── Folder tree render ──────────────────────────────────────────────────────
-
   const tree = buildTree(folders)
-  const visibleNotes = selectedFolder === null
-    ? notes
-    : notes.filter((n) => n.folder_id === selectedFolder)
-
-  function FolderTreeNode({ node, depth = 0 }: { node: FolderNode; depth?: number }) {
-    const isExpanded = expandedFolders.has(node.id)
-    const isSelected = selectedFolder === node.id
-    const hasChildren = node.children.length > 0
-    const noteCount = notes.filter((n) => n.folder_id === node.id).length
-
-    return (
-      <div>
-        <div
-          className="group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer"
-          style={{
-            paddingLeft: `${8 + depth * 14}px`,
-            background: isSelected ? 'var(--accent-soft)' : 'transparent',
-          }}
-          onClick={() => {
-            setSelectedFolder(node.id)
-            if (hasChildren) setExpandedFolders((prev) => {
-              const next = new Set(prev)
-              next.has(node.id) ? next.delete(node.id) : next.add(node.id)
-              return next
-            })
-          }}
-        >
-          {hasChildren ? (
-            <span style={{ color: 'var(--muted)' }}>
-              {isExpanded ? <ChevronRight size={12} style={{ transform: 'rotate(90deg)' }} /> : <ChevronRight size={12} />}
-            </span>
-          ) : (
-            <span style={{ width: 12, display: 'inline-block' }} />
-          )}
-          <FolderIcon size={13} style={{ color: isSelected ? 'var(--accent)' : 'var(--muted)', flexShrink: 0 }} />
-          <span
-            className="flex-1 text-xs font-medium truncate"
-            style={{ color: isSelected ? 'var(--accent)' : 'var(--foreground)' }}
-          >
-            {node.name}
-          </span>
-          {noteCount > 0 && (
-            <span className="text-[10px] shrink-0" style={{ color: 'var(--muted)' }}>{noteCount}</span>
-          )}
-          <button
-            onClick={(e) => openFolderMenu(e, node)}
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded shrink-0"
-            style={{ color: 'var(--muted)' }}
-          >
-            <MoreHorizontal size={13} />
-          </button>
-        </div>
-        {isExpanded && node.children.map((child) => (
-          <FolderTreeNode key={child.id} node={child} depth={depth + 1} />
-        ))}
-      </div>
-    )
-  }
+  const visibleNotes = selectedFolder === null ? notes : notes.filter((n) => n.folder_id === selectedFolder)
 
   return (
     <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--background)' }}>
-      {/* Sidebar */}
       <aside
         className={`flex flex-col shrink-0 border-r transition-all duration-200 ${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
@@ -321,7 +302,7 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        {/* All notes filter */}
+        {/* All notes */}
         <div className="px-2 pt-2 shrink-0">
           <button
             onClick={() => setSelectedFolder(null)}
@@ -341,7 +322,17 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
         {tree.length > 0 && (
           <div className="px-2 pt-1 shrink-0">
             {tree.map((node) => (
-              <FolderTreeNode key={node.id} node={node} />
+              <FolderTreeNode
+                key={node.id}
+                node={node}
+                depth={0}
+                notes={notes}
+                selectedFolder={selectedFolder}
+                expandedFolders={expandedFolders}
+                onSelect={setSelectedFolder}
+                onToggle={toggleExpanded}
+                onMenu={openFolderMenu}
+              />
             ))}
             <div className="mt-2 border-t" style={{ borderColor: 'var(--border)' }} />
           </div>
@@ -360,16 +351,14 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
                     href={`/notes/${note.id}`}
                     className="flex items-start gap-2 px-2 py-2.5 rounded-lg pr-8"
                     style={{
+                      display: 'flex',
                       background: active ? 'var(--accent-soft)' : 'transparent',
                       color: active ? 'var(--accent)' : 'var(--foreground)',
-                      display: 'flex',
                     }}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{note.title || 'Senza titolo'}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                        {formatDateShort(note.updated_at)}
-                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatDateShort(note.updated_at)}</p>
                     </div>
                   </Link>
                   <button
@@ -395,12 +384,7 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
               </span>
             </div>
             {backlinks.map((bl) => (
-              <Link
-                key={bl.id}
-                href={`/notes/${bl.id}`}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs"
-                style={{ color: 'var(--foreground)' }}
-              >
+              <Link key={bl.id} href={`/notes/${bl.id}`} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs" style={{ color: 'var(--foreground)' }}>
                 <div className="w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
                 <span className="truncate">{bl.title}</span>
               </Link>
@@ -414,26 +398,18 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <button
           onClick={() => setSidebarOpen((v) => !v)}
           className="absolute top-3 left-3 z-10 p-1.5 rounded-lg border"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-          title={sidebarOpen ? 'Nascondi sidebar' : 'Mostra sidebar'}
         >
           <ChevronLeft size={14} style={{ transform: sidebarOpen ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
         </button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </main>
 
-      {menu && (
-        <ContextMenu
-          items={menu.items}
-          position={menu.position}
-          onClose={() => setMenu(null)}
-        />
-      )}
+      {menu && <ContextMenu items={menu.items} position={menu.position} onClose={() => setMenu(null)} />}
       <ToastProvider />
     </div>
   )

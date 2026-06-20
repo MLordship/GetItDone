@@ -8,7 +8,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
-  const next = searchParams.get('next') ?? '/gtd/inbox'
+
+  // type=recovery viene aggiunto da Supabase nei link di reset password (PKCE e OTP)
+  const next = type === 'recovery'
+    ? '/auth/reset'
+    : (searchParams.get('next') ?? '/gtd/inbox')
 
   // In produzione dietro un proxy (Netlify/Vercel) l'origin dalla request
   // può essere localhost — usiamo x-forwarded-host se disponibile

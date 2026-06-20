@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import PageHeader from '@/components/layout/PageHeader'
 import AreasManager from './AreasManager'
 import LogoutButton from './LogoutButton'
@@ -26,6 +27,13 @@ export default function SettingsPage() {
         <section className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Account</h2>
           <AccountInfo />
+          <Link
+            href="/auth/reset"
+            className="block w-full text-left px-4 py-2.5 rounded-xl text-sm border transition-opacity hover:opacity-70"
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+          >
+            Cambia password
+          </Link>
           <LogoutButton />
         </section>
       </div>

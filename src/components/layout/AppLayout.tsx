@@ -22,6 +22,7 @@ import {
   GitBranch,
   LayoutDashboard,
   Search,
+  Home,
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -108,9 +109,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--background)' }}>
       {/* Sidebar — desktop only */}
       <aside className="hidden md:flex flex-col w-64 shrink-0 border-r" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          <span className="text-base font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>GetItDone</span>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Getting Things Done</p>
+        <div className="px-5 py-4 border-b flex items-start justify-between" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <span className="text-base font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>GetItDone</span>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Getting Things Done</p>
+          </div>
+          <Link href="/" title="Home" className="p-1 rounded-lg mt-0.5 hover:opacity-70" style={{ color: 'var(--muted)' }}>
+            <Home size={15} />
+          </Link>
         </div>
 
         <nav className="flex-1 px-3 py-3 overflow-y-auto">

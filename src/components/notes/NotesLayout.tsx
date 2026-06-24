@@ -116,7 +116,8 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
   const [backlinks, setBacklinks] = useState<BacklinkNote[]>([])
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const creatingNote = useRef(false)
   const pathname = usePathname()
@@ -166,7 +167,7 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
   // Chiudi sidebar mobile quando si naviga a una nota
   useEffect(() => {
-    setSidebarOpen(false)
+    setMobileSidebarOpen(false)
   }, [pathname])
 
   function toggleExpanded(id: string) {
@@ -428,21 +429,20 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
       {/* ── Desktop sidebar (inline) ── */}
       <aside
-        className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
+        className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${desktopSidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
       >
         {sidebarContent}
       </aside>
 
       {/* ── Mobile sidebar (overlay drawer) ── */}
-      {sidebarOpen && (
+      {mobileSidebarOpen && (
         <div
           className="md:hidden fixed inset-0 z-40 flex"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setMobileSidebarOpen(false)}
         >
           {/* Backdrop */}
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} />
-          {/* Drawer */}
           <aside
             className="relative flex flex-col w-72 max-w-[85vw] h-full border-r overflow-hidden"
             style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
@@ -461,7 +461,7 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
           style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
         >
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setMobileSidebarOpen(true)}
             className="p-1.5 rounded-lg shrink-0"
             style={{ color: 'var(--muted)' }}
           >
@@ -484,11 +484,11 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
         {/* ── Desktop toggle button ── */}
         <button
-          onClick={() => setSidebarOpen((v) => !v)}
+          onClick={() => setDesktopSidebarOpen((v) => !v)}
           className="hidden md:flex absolute top-3 left-3 z-10 p-1.5 rounded-lg border items-center justify-center"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}
         >
-          <ChevronLeft size={14} style={{ transform: sidebarOpen ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
+          <ChevronLeft size={14} style={{ transform: desktopSidebarOpen ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
         </button>
 
         <div className="flex-1 overflow-hidden">{children}</div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import ContextMenu, { type ContextMenuItem } from './ContextMenu'
 import type { Note, Folder } from '@/types/database'
 import {
   Plus, FileText, Folder as FolderIcon, FolderOpen, ChevronLeft,
-  ChevronRight, Trash2, FolderPlus, Home, Link2, MoreHorizontal,
+  ChevronRight, Trash2, FolderPlus, Home, Link2, MoreHorizontal, Menu,
 } from 'lucide-react'
 import { formatDateShort } from '@/lib/dateIt'
 
@@ -116,8 +116,9 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
   const [backlinks, setBacklinks] = useState<BacklinkNote[]>([])
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [menu, setMenu] = useState<MenuState | null>(null)
+  const creatingNote = useRef(false)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -163,12 +164,36 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('notes-updated', handler)
   }, [activeNoteId, loadBacklinks])
 
+  // Chiudi sidebar mobile quando si naviga a una nota
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [pathname])
+
   function toggleExpanded(id: string) {
     setExpandedFolders((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+  }
+
+  // Crea nota direttamente (evita navigare su /notes/new che accumula note vuote)
+  async function newNote() {
+    if (creatingNote.current) return
+    creatingNote.current = true
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('notes')
+        .insert({ user_id: user.id, title: 'Senza titolo', content: '' })
+        .select('id')
+        .single()
+      if (data) router.push(`/notes/${data.id}`)
+    } finally {
+      creatingNote.current = false
+    }
   }
 
   // ── Folder actions ──────────────────────────────────────────────────────────
@@ -279,133 +304,193 @@ export default function NotesLayout({ children }: { children: React.ReactNode })
 
   const tree = buildTree(folders)
   const visibleNotes = selectedFolder === null ? notes : notes.filter((n) => n.folder_id === selectedFolder)
+  const activeNoteTitle = activeNoteId ? (notes.find((n) => n.id === activeNoteId)?.title || 'Senza titolo') : 'Notes'
+
+  // ── Sidebar content (condiviso tra desktop e mobile) ────────────────────────
+
+  const sidebarContent = (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <Link href="/" className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--foreground)' }}>
+          <Home size={14} style={{ color: 'var(--muted)' }} />
+          Notes
+        </Link>
+        <div className="flex items-center gap-1">
+          <button onClick={() => createFolder(null)} title="Nuova cartella" className="p-1.5 rounded-lg hover:bg-[var(--border)]" style={{ color: 'var(--muted)' }}>
+            <FolderPlus size={15} />
+          </button>
+          <button onClick={newNote} title="Nuova nota" className="p-1.5 rounded-lg" style={{ background: 'var(--accent)', color: '#fff' }}>
+            <Plus size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* All notes */}
+      <div className="px-2 pt-2 shrink-0">
+        <button
+          onClick={() => setSelectedFolder(null)}
+          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium"
+          style={{
+            background: selectedFolder === null ? 'var(--accent-soft)' : 'transparent',
+            color: selectedFolder === null ? 'var(--accent)' : 'var(--muted)',
+          }}
+        >
+          <FileText size={13} />
+          Tutte le note
+          <span className="ml-auto text-[10px]">{notes.length}</span>
+        </button>
+      </div>
+
+      {/* Folder tree */}
+      {tree.length > 0 && (
+        <div className="px-2 pt-1 shrink-0">
+          {tree.map((node) => (
+            <FolderTreeNode
+              key={node.id}
+              node={node}
+              depth={0}
+              notes={notes}
+              selectedFolder={selectedFolder}
+              expandedFolders={expandedFolders}
+              onSelect={setSelectedFolder}
+              onToggle={toggleExpanded}
+              onMenu={openFolderMenu}
+            />
+          ))}
+          <div className="mt-2 border-t" style={{ borderColor: 'var(--border)' }} />
+        </div>
+      )}
+
+      {/* Notes list */}
+      <div className="flex-1 overflow-y-auto px-2 pb-2 pt-1">
+        {visibleNotes.length === 0 ? (
+          <p className="text-xs px-2 py-4 text-center" style={{ color: 'var(--muted)' }}>Nessuna nota</p>
+        ) : (
+          visibleNotes.map((note) => {
+            const active = note.id === activeNoteId
+            return (
+              <div key={note.id} className="group relative">
+                <Link
+                  href={`/notes/${note.id}`}
+                  className="flex items-start gap-2 px-2 py-2.5 rounded-lg pr-8"
+                  style={{
+                    display: 'flex',
+                    background: active ? 'var(--accent-soft)' : 'transparent',
+                    color: active ? 'var(--accent)' : 'var(--foreground)',
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{note.title || 'Senza titolo'}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatDateShort(note.updated_at)}</p>
+                  </div>
+                </Link>
+                <button
+                  onClick={(e) => openNoteMenu(e, note)}
+                  className="absolute right-1.5 top-2.5 opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  <MoreHorizontal size={13} />
+                </button>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Backlinks */}
+      {activeNoteId && backlinks.length > 0 && (
+        <div className="px-2 pb-2 border-t pt-2 shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center gap-1.5 px-2 pb-1">
+            <Link2 size={12} style={{ color: 'var(--muted)' }} />
+            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+              Collegata da {backlinks.length}
+            </span>
+          </div>
+          {backlinks.map((bl) => (
+            <Link key={bl.id} href={`/notes/${bl.id}`} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs" style={{ color: 'var(--foreground)' }}>
+              <div className="w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+              <span className="truncate">{bl.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Bottom */}
+      <div className="px-3 pb-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+        <ThemeToggle />
+      </div>
+    </>
+  )
 
   return (
     <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--background)' }}>
+
+      {/* ── Desktop sidebar (inline) ── */}
       <aside
-        className={`flex flex-col shrink-0 border-r transition-all duration-200 ${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
+        className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'}`}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: 'var(--border)' }}>
-          <Link href="/" className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--foreground)' }}>
-            <Home size={14} style={{ color: 'var(--muted)' }} />
-            Notes
-          </Link>
-          <div className="flex items-center gap-1">
-            <button onClick={() => createFolder(null)} title="Nuova cartella" className="p-1.5 rounded-lg hover:bg-[var(--border)]" style={{ color: 'var(--muted)' }}>
-              <FolderPlus size={15} />
-            </button>
-            <button onClick={() => router.push('/notes/new')} title="Nuova nota" className="p-1.5 rounded-lg" style={{ background: 'var(--accent)', color: '#fff' }}>
-              <Plus size={15} />
-            </button>
-          </div>
-        </div>
+        {sidebarContent}
+      </aside>
 
-        {/* All notes */}
-        <div className="px-2 pt-2 shrink-0">
-          <button
-            onClick={() => setSelectedFolder(null)}
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium"
-            style={{
-              background: selectedFolder === null ? 'var(--accent-soft)' : 'transparent',
-              color: selectedFolder === null ? 'var(--accent)' : 'var(--muted)',
-            }}
+      {/* ── Mobile sidebar (overlay drawer) ── */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 flex"
+          onClick={() => setSidebarOpen(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)' }} />
+          {/* Drawer */}
+          <aside
+            className="relative flex flex-col w-72 max-w-[85vw] h-full border-r overflow-hidden"
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <FileText size={13} />
-            Tutte le note
-            <span className="ml-auto text-[10px]">{notes.length}</span>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      <main className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+
+        {/* ── Mobile top bar ── */}
+        <div
+          className="md:hidden flex items-center gap-2 px-3 py-2 border-b shrink-0"
+          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+        >
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-lg shrink-0"
+            style={{ color: 'var(--muted)' }}
+          >
+            <Menu size={18} />
+          </button>
+          <span className="flex-1 text-sm font-medium truncate" style={{ color: 'var(--foreground)' }}>
+            {activeNoteTitle}
+          </span>
+          <Link href="/" className="p-1.5 rounded-lg shrink-0" style={{ color: 'var(--muted)' }}>
+            <Home size={18} />
+          </Link>
+          <button
+            onClick={newNote}
+            className="p-1.5 rounded-lg shrink-0"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            <Plus size={18} />
           </button>
         </div>
 
-        {/* Folder tree */}
-        {tree.length > 0 && (
-          <div className="px-2 pt-1 shrink-0">
-            {tree.map((node) => (
-              <FolderTreeNode
-                key={node.id}
-                node={node}
-                depth={0}
-                notes={notes}
-                selectedFolder={selectedFolder}
-                expandedFolders={expandedFolders}
-                onSelect={setSelectedFolder}
-                onToggle={toggleExpanded}
-                onMenu={openFolderMenu}
-              />
-            ))}
-            <div className="mt-2 border-t" style={{ borderColor: 'var(--border)' }} />
-          </div>
-        )}
-
-        {/* Notes list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-2 pt-1">
-          {visibleNotes.length === 0 ? (
-            <p className="text-xs px-2 py-4 text-center" style={{ color: 'var(--muted)' }}>Nessuna nota</p>
-          ) : (
-            visibleNotes.map((note) => {
-              const active = note.id === activeNoteId
-              return (
-                <div key={note.id} className="group relative">
-                  <Link
-                    href={`/notes/${note.id}`}
-                    className="flex items-start gap-2 px-2 py-2.5 rounded-lg pr-8"
-                    style={{
-                      display: 'flex',
-                      background: active ? 'var(--accent-soft)' : 'transparent',
-                      color: active ? 'var(--accent)' : 'var(--foreground)',
-                    }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{note.title || 'Senza titolo'}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatDateShort(note.updated_at)}</p>
-                    </div>
-                  </Link>
-                  <button
-                    onClick={(e) => openNoteMenu(e, note)}
-                    className="absolute right-1.5 top-2.5 opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity"
-                    style={{ color: 'var(--muted)' }}
-                  >
-                    <MoreHorizontal size={13} />
-                  </button>
-                </div>
-              )
-            })
-          )}
-        </div>
-
-        {/* Backlinks */}
-        {activeNoteId && backlinks.length > 0 && (
-          <div className="px-2 pb-2 border-t pt-2 shrink-0" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex items-center gap-1.5 px-2 pb-1">
-              <Link2 size={12} style={{ color: 'var(--muted)' }} />
-              <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
-                Collegata da {backlinks.length}
-              </span>
-            </div>
-            {backlinks.map((bl) => (
-              <Link key={bl.id} href={`/notes/${bl.id}`} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs" style={{ color: 'var(--foreground)' }}>
-                <div className="w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
-                <span className="truncate">{bl.title}</span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Bottom */}
-        <div className="px-3 pb-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-          <ThemeToggle />
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+        {/* ── Desktop toggle button ── */}
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="absolute top-3 left-3 z-10 p-1.5 rounded-lg border"
+          className="hidden md:flex absolute top-3 left-3 z-10 p-1.5 rounded-lg border items-center justify-center"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}
         >
           <ChevronLeft size={14} style={{ transform: sidebarOpen ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
         </button>
+
         <div className="flex-1 overflow-hidden">{children}</div>
       </main>
 
